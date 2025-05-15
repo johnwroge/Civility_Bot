@@ -2,7 +2,6 @@
 # This implementation uses discord.py and a pre-trained ML model for hate speech detection
 
 import os
-import discord_bot.bot as bot
 import discord
 from discord.ext import commands
 import pandas as pd
@@ -143,10 +142,11 @@ async def on_ready():
     """Called when the bot is ready and connected to Discord"""
     load_server_config()
     logger.info(f'{bot.user.name} has connected to Discord!')
-    await bot.change_presence(activity=bot.Activity(
-        type=bot.ActivityType.watching, 
+  
+    await bot.change_presence(activity=discord.Activity(
+        type=discord.ActivityType.watching, 
         name="for hate speech | !help"
-    ))
+))
 
 @bot.event
 async def on_message(message):
