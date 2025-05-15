@@ -57,6 +57,7 @@ class HateSpeechDetector:
         """
         self.total_messages += 1
         
+
         # Handle empty messages
         if not text or text.isspace():
             return 0.0
@@ -78,7 +79,7 @@ class HateSpeechDetector:
         # Count detection if above threshold
         if hate_score > 0.7:
             self.detection_count += 1
-            
+        print("John W", text, hate_score, text.isspace())
         return hate_score
         
     def get_stats(self):
