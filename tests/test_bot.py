@@ -8,15 +8,16 @@ import json
 import os
 import datetime
 from unittest.mock import AsyncMock, MagicMock, patch, mock_open
-import discord
+import discord_bot.bot as bot
 import torch
 import tempfile
 import shutil
 
+
 # Import the bot modules
 # Note: Assuming the main bot code is in bot.py and we can import components
-from bot import HateSpeechDetector, load_server_config, save_server_config, get_server_settings
-from bot import on_message, on_ready, analyze, config, stats, reset_stats
+from discord_bot.bot import HateSpeechDetector, load_server_config, save_server_config, get_server_settings
+from discord_bot.bot import on_message, on_ready, analyze, config, stats, reset_stats
 
 # Constants for testing
 TEST_SERVER_ID = "123456789012345678"

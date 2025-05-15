@@ -2,6 +2,7 @@
 # This implementation uses discord.py and a pre-trained ML model for hate speech detection
 
 import os
+import discord_bot.bot as bot
 import discord
 from discord.ext import commands
 import pandas as pd
@@ -141,8 +142,8 @@ async def on_ready():
     """Called when the bot is ready and connected to Discord"""
     load_server_config()
     logger.info(f'{bot.user.name} has connected to Discord!')
-    await bot.change_presence(activity=discord.Activity(
-        type=discord.ActivityType.watching, 
+    await bot.change_presence(activity=bot.Activity(
+        type=bot.ActivityType.watching, 
         name="for hate speech | !help"
     ))
 
@@ -183,7 +184,7 @@ async def on_message(message):
                         f"Your message was removed for potentially containing hate speech. "
                         f"Please review the server rules."
                     )
-                except discord.errors.Forbidden:
+                except bot.errors.Forbidden:
                     logger.warning(f"Could not delete message in {message.guild.name}")
                     
             elif settings["action"] == "mute":
@@ -194,7 +195,7 @@ async def on_message(message):
                     await message.channel.send(
                         f"{message.author.mention} has been temporarily muted for using hate speech."
                     )
-                except discord.errors.Forbidden:
+                except bot.errors.Forbidden:
                     logger.warning(f"Could not mute user in {message.guild.name}")
             
             else:  # Default action: flag
@@ -204,13 +205,13 @@ async def on_message(message):
             if settings["mod_channel"]:
                 mod_channel = bot.get_channel(int(settings["mod_channel"]))
                 if mod_channel:
-                    embed = discord.Embed(
+                    embed = bot.Embed(
                         title="Hate Speech Detected",
                         description=f"**User:** {message.author.mention}\n"
                                    f"**Channel:** {message.channel.mention}\n"
                                    f"**Content:** {message.content}\n"
                                    f"**Score:** {hate_score:.2f}",
-                        color=discord.Color.red()
+                        color=bot.Color.red()
                     )
                     embed.set_footer(text=f"Message ID: {message.id}")
                     await mod_channel.send(embed=embed)
@@ -224,9 +225,9 @@ async def on_message(message):
 async def stats(ctx):
     """Show detection statistics"""
     stats_data = detector.get_stats()
-    embed = discord.Embed(
+    embed = bot.Embed(
         title="Hate Speech Detection Stats",
-        color=discord.Color.blue()
+        color=bot.Color.blue()
     )
     embed.add_field(name="Total Messages Analyzed", value=stats_data["total_messages"])
     embed.add_field(name="Detected Hate Speech", value=stats_data["detected_hate_speech"])
@@ -253,10 +254,10 @@ async def config(ctx, setting=None, value=None):
     
     # List current settings if no parameters
     if setting is None:
-        embed = discord.Embed(
+        embed = bot.Embed(
             title="Server Configuration",
             description="Current settings for this server:",
-            color=discord.Color.blue()
+            color=bot.Color.blue()
         )
         for key, val in settings.items():
             if key == "whitelist_channels" or key == "whitelist_roles":
@@ -321,7 +322,7 @@ async def config(ctx, setting=None, value=None):
                     await ctx.send("That channel doesn't belong to this server")
                     return
                 settings["mod_channel"] = channel_id
-            except (discord.errors.NotFound, ValueError):
+            except (bot.errors.NotFound, ValueError):
                 await ctx.send("Invalid channel")
                 return
                 
@@ -346,7 +347,7 @@ async def config(ctx, setting=None, value=None):
                     
                 if item_id not in settings[setting]:
                     settings[setting].append(item_id)
-            except (discord.errors.NotFound, ValueError):
+            except (bot.errors.NotFound, ValueError):
                 await ctx.send(f"Invalid {setting[10:-1]}")
                 return
                 
@@ -382,13 +383,13 @@ async def analyze(ctx, *, text):
     threshold = settings["threshold"]
     
     if score > threshold:
-        color = discord.Color.red()
+        color = bot.Color.red()
         result = "Detected hate speech"
     else:
-        color = discord.Color.green()
+        color = bot.Color.green()
         result = "No hate speech detected"
         
-    embed = discord.Embed(
+    embed = bot.Embed(
         title="Text Analysis",
         description=f"**Text:** {text}\n**Score:** {score:.4f}\n**Result:** {result}",
         color=color
