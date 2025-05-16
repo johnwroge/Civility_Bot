@@ -38,8 +38,11 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Initialize the hate speech detection model
 class HateSpeechDetector:
     def __init__(self):
-        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/MiniLM-L12-H384-uncased")
+        self.tokenizer = AutoTokenizer.from_pretrained("tomh/toxigen_roberta")
         self.model = AutoModelForSequenceClassification.from_pretrained("tomh/toxigen_roberta")
+
+       
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         logger.info(f"Hate speech model loaded on {self.device}")
@@ -72,8 +75,9 @@ class HateSpeechDetector:
         # Get model prediction
         with torch.no_grad():
             outputs = self.model(**inputs)
-            scores = torch.nn.functional.softmax(outputs.logits, dim=1)
-            hate_score = scores[0][1].item()  # Probability of hate speech class
+            scores = torch.sigmoid(outputs.logits)
+            hate_score = scores[0][1].item()  # Assuming class 1 is "toxic"
+
         
         # Count detection if above threshold
         if hate_score > 0.7:
@@ -124,10 +128,21 @@ def save_server_config():
 def get_server_settings(guild_id):
     """Get settings for a specific server or create defaults"""
     guild_id = str(guild_id)  # Convert to string for JSON
+    # The classification threshold determines how confidently the model must predict hate speech
+    # before triggering a moderation action. While the original ToxiGen paper used a threshold of 0.7 
+    # to select only the most toxic samples for training (discarding ~2/3 of generated examples), 
+    # this value is too strict for real-time moderation, where subtle but harmful content should still be flagged.
+    #
+    # Recommended moderation threshold:
+    # - 0.3 to 0.4: good balance between catching explicit and implicit hate
+    # - >0.7: extremely confident, can be used for harsher actions (e.g. delete/mute)
+    #
+    # We use a lower threshold (default: 0.3) to increase recall and catch more potentially harmful messages.
+
     if guild_id not in server_config:
         server_config[guild_id] = {
             "enabled": True,
-            "threshold": 0.7,  # Default threshold for flagging hate speech
+            "threshold": 0.3,  # Default threshold for flagging hate speech
             "action": "flag",  # Options: flag, delete, mute
             "mod_channel": None,  # Channel ID for moderator notifications
             "whitelist_channels": [],  # Channels to ignore
@@ -142,7 +157,8 @@ async def on_ready():
     """Called when the bot is ready and connected to Discord"""
     load_server_config()
     logger.info(f'{bot.user.name} has connected to Discord!')
-  
+    logger.info(f"Bot is running. Logged in as {bot.user.name} ({bot.user.id})")
+
     await bot.change_presence(activity=discord.Activity(
         type=discord.ActivityType.watching, 
         name="for hate speech | !help"
@@ -175,8 +191,13 @@ async def on_message(message):
         
         # If above threshold, take action
         if hate_score > settings["threshold"]:
-            logger.info(f"Detected hate speech ({hate_score:.2f}): {message.content}")
-            
+            logger.info(f"Detected hate speech")
+            logger.info(f"User: {message.author} | Channel: {message.channel} | Score: {hate_score:.2f} | Message: {message.content}")
+            await message.channel.send(f"⚠️ Hate speech detected in: {message.content}")
+
+        if hate_score > 0.3 and hate_score <= settings["threshold"]:
+            logger.info(f"Near miss (score={hate_score:.2f}): {message.content}")
+  
             # Take appropriate action based on settings
             if settings["action"] == "delete":
                 try:
@@ -200,19 +221,31 @@ async def on_message(message):
                     logger.warning(f"Could not mute user in {message.guild.name}")
             
             else:  # Default action: flag
-                await message.add_reaction("⚠️")
-            
+                try: 
+                    await message.add_reaction("⚠️")
+                    await message.reply(
+                        "**⚠️ This message may violate our server's hate speech policy.**\n"
+                        "Please be respectful. Continued violations may result in moderation actions "
+                        "including message removal or temporary mutes.\n"
+                        "_If you believe this was a mistake, contact a moderator._"
+                    )       
+                    await message.delete()
+                except discord.Forbidden:
+                    logger.warning(f"Could not delete message from {message.author} in {message.guild.name}")
+                except Exception as e:
+                    logger.error(f"Failed to flag/delete message: {e}")
+        
             # Notify moderators if a mod channel is set
             if settings["mod_channel"]:
                 mod_channel = bot.get_channel(int(settings["mod_channel"]))
                 if mod_channel:
-                    embed = bot.Embed(
+                    embed = discord.Embed(
                         title="Hate Speech Detected",
                         description=f"**User:** {message.author.mention}\n"
                                    f"**Channel:** {message.channel.mention}\n"
                                    f"**Content:** {message.content}\n"
                                    f"**Score:** {hate_score:.2f}",
-                        color=bot.Color.red()
+                        color=discord.Color.red()
                     )
                     embed.set_footer(text=f"Message ID: {message.id}")
                     await mod_channel.send(embed=embed)
@@ -226,9 +259,9 @@ async def on_message(message):
 async def stats(ctx):
     """Show detection statistics"""
     stats_data = detector.get_stats()
-    embed = bot.Embed(
+    embed = discord.Embed(
         title="Hate Speech Detection Stats",
-        color=bot.Color.blue()
+        color=discord.Color.blue()
     )
     embed.add_field(name="Total Messages Analyzed", value=stats_data["total_messages"])
     embed.add_field(name="Detected Hate Speech", value=stats_data["detected_hate_speech"])
@@ -255,10 +288,10 @@ async def config(ctx, setting=None, value=None):
     
     # List current settings if no parameters
     if setting is None:
-        embed = bot.Embed(
+        embed = discord.Embed(
             title="Server Configuration",
             description="Current settings for this server:",
-            color=bot.Color.blue()
+            color=discord.Color.blue()
         )
         for key, val in settings.items():
             if key == "whitelist_channels" or key == "whitelist_roles":
@@ -384,13 +417,13 @@ async def analyze(ctx, *, text):
     threshold = settings["threshold"]
     
     if score > threshold:
-        color = bot.Color.red()
+        color = discord.Color.red()
         result = "Detected hate speech"
     else:
-        color = bot.Color.green()
+        color = discord.Color.green()
         result = "No hate speech detected"
         
-    embed = bot.Embed(
+    embed = discord.Embed(
         title="Text Analysis",
         description=f"**Text:** {text}\n**Score:** {score:.4f}\n**Result:** {result}",
         color=color
