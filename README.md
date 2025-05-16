@@ -112,16 +112,16 @@ The project includes a comprehensive test suite to ensure everything works corre
 4. Run specific test categories:
    ```bash
    # Test just the detector
-   pytest -xvs test_bot.py::TestHateSpeechDetector
+   pytest -xvs tests/test_bot.py::TestHateSpeechDetector
    
    # Test server configuration
-   pytest -xvs test_bot.py::TestServerConfig
+   pytest -xvs tests/test_bot.py::TestServerConfig
    
    # Test bot events
-   pytest -xvs test_bot.py::TestBotEvents
+   pytest -xvs tests/test_bot.py::TestBotEvents
    
    # Test bot commands
-   pytest -xvs test_bot.py::TestBotCommands
+   pytest -xvs tests/test_bot.py::TestBotCommands
    ```
 
 5. Run a specific test:

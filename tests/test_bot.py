@@ -90,7 +90,7 @@ def server_config():
     config = {
         TEST_SERVER_ID: {
             "enabled": True,
-            "threshold": 0.7,
+            "threshold": 0.3,
             "action": "flag",
             "mod_channel": TEST_MOD_CHANNEL_ID,
             "whitelist_channels": [],
@@ -248,7 +248,7 @@ class TestServerConfig:
         """Test retrieving settings for existing server"""
         settings = get_server_settings(TEST_SERVER_ID)
         assert settings["enabled"] is True
-        assert settings["threshold"] == 0.7
+        assert settings["threshold"] == 0.3
         assert settings["action"] == "flag"
     
     def test_get_server_settings_new(self, server_config):
@@ -275,7 +275,7 @@ class TestServerConfig:
                 # Verify default settings structure
                 assert settings == {
                     "enabled": True,
-                    "threshold": 0.7,
+                    "threshold": 0.3,
                     "action": "flag",
                     "mod_channel": None,
                     "whitelist_channels": [],
@@ -316,7 +316,9 @@ class TestBotEvents:
                 mock_load.assert_called_once()
                 
                 # Verify logger was called with expected message
-                mock_logger.assert_called_with(f'{mock_user.name} has connected to Discord!')
+                mock_logger.assert_called_with(
+                    f"Bot is running. Logged in as {mock_user.name} ({mock_user.id})"
+)
                 
                 # Verify that bot.change_presence was called
                 test_bot.change_presence.assert_called_once()
@@ -335,7 +337,7 @@ class TestBotEvents:
         
         with patch('discord_bot.bot.detector', detector), \
             patch('discord_bot.bot.bot', mock_bot), \
-            patch('discord_bot.bot.get_server_settings', return_value={"enabled": True, "threshold": 0.7, "action": "flag"}):
+            patch('discord_bot.bot.get_server_settings', return_value={"enabled": True, "threshold": 0.85, "action": "flag"}):
             
             # Call the on_message handler
             await bot.on_message(mock_message)
@@ -405,7 +407,7 @@ class TestBotEvents:
         
         settings = {
             "enabled": True,
-            "threshold": 0.7,
+            "threshold": 0.3,
             "action": "flag",
             "mod_channel": TEST_MOD_CHANNEL_ID,
             "whitelist_channels": [],
@@ -433,7 +435,7 @@ class TestBotEvents:
         
         settings = {
             "enabled": True,
-            "threshold": 0.7,
+            "threshold": 0.3,
             "action": "delete",
             "mod_channel": TEST_MOD_CHANNEL_ID,
             "whitelist_channels": [],
@@ -463,7 +465,7 @@ class TestBotEvents:
         
         settings = {
             "enabled": True,
-            "threshold": 0.7,
+            "threshold": 0.3,
             "action": "mute",
             "mod_channel": TEST_MOD_CHANNEL_ID,
             "whitelist_channels": [],
@@ -559,7 +561,7 @@ class TestBotCommands:
         hate_text = HATE_SPEECH_SAMPLES[0]
         
         with patch('discord_bot.bot.detector', detector), \
-             patch('discord_bot.bot.get_server_settings', return_value={"threshold": 0.7}):
+             patch('discord_bot.bot.get_server_settings', return_value={"threshold": 0.3}):
             await analyze(mock_ctx, text=hate_text)
             
             # Verify embedded message was sent
