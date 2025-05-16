@@ -2,6 +2,9 @@
 
 A Discord bot that uses machine learning to detect and moderate hate speech in server messages. The bot monitors messages in real-time, identifies potentially harmful content, and takes configurable actions such as flagging, deleting messages, or temporarily muting users.
 
+<img width="655" alt="Screen Shot 2025-05-16 at 1 04 53 PM" src="https://github.com/user-attachments/assets/aea3031a-8b2d-41cf-a1ea-4c559b4dd825" />
+
+
 ## Features
 
 - Real-time hate speech detection using a pre-trained machine learning model
